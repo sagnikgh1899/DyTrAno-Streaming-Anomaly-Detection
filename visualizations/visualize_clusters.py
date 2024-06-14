@@ -3,9 +3,9 @@ Contains helper functions to plot the clusters
 """
 
 import matplotlib.pyplot as plt
+import numpy as np
 # pylint: disable=E0401
 from utils import data_utils, extract_data
-import numpy as np
 
 
 def cluster_visualization(labels, all_node_maps):
