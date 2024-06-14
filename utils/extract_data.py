@@ -4,7 +4,7 @@ the raw and ground truth data file paths
 """
 import os
 # pylint: disable=E0401
-import constants
+from utils import constants
 
 
 def get_raw_data_path():
