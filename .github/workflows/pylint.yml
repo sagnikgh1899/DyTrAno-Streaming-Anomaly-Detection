@@ -1,4 +1,4 @@
-name: Pylint
+name: build_test
 
 on: [push]
 
