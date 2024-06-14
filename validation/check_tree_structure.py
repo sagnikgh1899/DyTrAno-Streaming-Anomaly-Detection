@@ -3,7 +3,7 @@ Validate tree structures by checking parent-child density relationships.
 """
 
 
-def test_tree_structure(all_node_maps):
+def check_tree_structure(all_node_maps):
     """Test the validity of tree structures in all_node_maps."""
 
     def is_valid_node(node):

@@ -7,7 +7,7 @@ import warnings
 from utils import pruning_utils, constants, clustering_utils
 from visualizations import interactive_plot
 from visualizations import visualize_clusters
-from tests import test_tree_structure
+from validation import check_tree_structure
 
 
 def parse_arguments():
@@ -52,7 +52,7 @@ def main():
         constants.DELTA, constants.BETA)
 
     # Test to see if the tree structure is satisfied
-    test_tree_structure.test_tree_structure(all_node_maps)
+    check_tree_structure.check_tree_structure(all_node_maps)
 
     # Display the tree densities - for all trees
     if constants.DISPLAY_DENSITY:
