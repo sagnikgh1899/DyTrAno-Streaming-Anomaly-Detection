@@ -3,7 +3,6 @@ This file contains helper functions to return
 the raw and ground truth data file paths
 """
 import os
-# pylint: disable=E0401
 from utils import constants
 
 

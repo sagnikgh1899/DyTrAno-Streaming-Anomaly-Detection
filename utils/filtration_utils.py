@@ -1,0 +1,92 @@
+"""
+Contains the helper functions for filtration of potential anomalies
+"""
+
+import numpy as np
+from utils import data_utils, extract_data, clustering_utils, pruning_utils, constants
+# from visualizations import debug_visualizations
+
+
+def calculate_cluster_icd(cluster_points, data):
+    """
+    Calculate the mean intra-cluster distance for the given cluster points
+    """
+    num_points = len(cluster_points)
+    if num_points <= 1:
+        return 0
+
+    total_distance = 0
+    count = 0
+    for idx in range(num_points):
+        for new_idx in range(idx + 1, num_points):
+            total_distance += pruning_utils.calculate_distance(data[cluster_points[idx]],
+                                                               data[cluster_points[new_idx]])
+            count += 1
+
+    return total_distance / count
+
+
+def find_nearest_inlier(potential_anomaly_index, labels, data):
+    """
+    Find the nearest non-anomalous neighbor of the potential anomaly
+    """
+    potential_anomaly = data[potential_anomaly_index]
+    inliers = np.where((labels != -1) & (labels != 0))[0]
+    distances = [pruning_utils.calculate_distance(potential_anomaly, data[inlier_index]) for
+                 inlier_index in inliers]
+    nearest_inlier_index = inliers[np.argmin(distances)]
+    return nearest_inlier_index
+
+
+# pylint: disable=R0914
+def filter_potential_anomalies(labels, all_node_maps, densities):
+    """
+    Returns the labels after selection of confirmed anomalies and inliers
+    """
+    data = data_utils.get_data(extract_data.get_raw_data_path())
+    potential_anomalies = np.where(labels == -1)[0]
+
+    for anomaly_index in potential_anomalies:
+        nearest_inlier_index = find_nearest_inlier(anomaly_index, labels, data)
+
+        cluster_id = labels[nearest_inlier_index]
+        node_map = all_node_maps[cluster_id]
+
+        cluster_points = [node.index for node in node_map.values()]
+        icd_inlier = calculate_cluster_icd(cluster_points, data)
+
+        dist1 = icd_inlier
+        dist2 = pruning_utils.calculate_distance(data[anomaly_index], data[nearest_inlier_index])
+
+        # Plot for debugging
+        # debug_vizualizations.plot_nearest_inlier_and_potential_anomaly_for_filtration
+        # (data, anomaly_index, nearest_inlier_index)
+
+        # print(f"Anomaly Index: {anomaly_index} Inlier Index: {nearest_inlier_index} "
+        #       f"ICD Inlier: {dist1},"
+        #       f"Distance between anomaly and nearest inlier: {dist2}, val: {dist2/dist1}")
+
+        if dist2 < constants.DELTA_FOR_FILTRATION * dist1:
+            labels[anomaly_index] = labels[nearest_inlier_index]
+            cluster_id = labels[nearest_inlier_index]
+            node_map = all_node_maps[cluster_id]
+
+            parent_node = node_map[nearest_inlier_index]
+
+            new_root_node = parent_node
+            anomaly_converted_to_inlier_density = densities[anomaly_index]
+            while anomaly_converted_to_inlier_density > new_root_node.get_density():
+                # pylint: disable=W0511
+                # TODO: What if the child density is higher than the actual root node
+                new_root_node = new_root_node.get_parent()
+
+            new_node = clustering_utils.TreeNode(anomaly_index, anomaly_converted_to_inlier_density,
+                                                 new_root_node, cluster_id)
+            new_node.set_parent(new_root_node)
+            new_root_node.add_child(new_node)
+            node_map[anomaly_index] = new_node
+
+        else:
+            labels[anomaly_index] = -1  # Confirmed anomaly
+
+    return labels

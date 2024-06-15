@@ -3,7 +3,6 @@ Module for hierarchical tree-based clustering using density criteria.
 """
 
 import numpy as np
-# pylint: disable=E0401
 from utils import data_utils, extract_data, pruning_utils
 
 
@@ -11,6 +10,7 @@ class TreeNode:
     """
     Represents a node in a tree structure for hierarchical clustering.
     """
+
     def __init__(self, index, density, parent, cluster_id):
         """
         Initialize a TreeNode with index, density, parent node, and cluster ID
@@ -204,8 +204,8 @@ def tree_based_clustering(pruned_neighbors_list, delta, beta):
 
         labels[root_index] = cluster_id
         _, node_map = cluster_tree(root_index, data, pruned_neighbors_list,
-                                           labels, densities, delta, cluster_id,
-                                           beta, None)
+                                   labels, densities, delta, cluster_id,
+                                   beta, None)
         all_node_maps[cluster_id] = node_map
 
         # Check if the cluster has only one point
