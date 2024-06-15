@@ -16,7 +16,7 @@ def cluster_visualization(labels, all_node_maps):
     unique_labels = np.unique(labels)
 
     plt.figure(figsize=(12, 10))
-    colors = plt.cm.get_cmap('tab20', len(unique_labels))
+    colors = plt.cm.get_cmap('viridis', len(unique_labels))
 
     for cluster_id in unique_labels:
         if cluster_id == 0:
@@ -24,10 +24,12 @@ def cluster_visualization(labels, all_node_maps):
         cluster_points = data[np.array(labels) == cluster_id]
         if cluster_id == -1:
             plt.scatter(cluster_points[:, 0], cluster_points[:, 1],
-                        color='red', marker='*', edgecolor='black', s=100,
+                        color='black', marker='*', edgecolor='black', s=100,
                         label='Anomaly')
         else:
-            plt.scatter(cluster_points[:, 0], cluster_points[:, 1], color=colors(cluster_id),
+            normalized_color_index = cluster_id / len(unique_labels)
+            plt.scatter(cluster_points[:, 0], cluster_points[:, 1],
+                        color=colors(normalized_color_index),
                         label=f'Cluster {cluster_id}', s=10)
 
             # pylint: disable=W0640

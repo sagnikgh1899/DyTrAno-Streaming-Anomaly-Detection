@@ -4,7 +4,6 @@ Contains the utility functions to return the pruned neighbor list
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-# pylint: disable=E0401
 from utils import constants, data_utils, extract_data
 
 

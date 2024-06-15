@@ -4,9 +4,9 @@ This is the main file which runs the DyTrAno program
 
 import argparse
 import warnings
-from utils import pruning_utils, constants, clustering_utils
-from visualizations import interactive_plot
-from visualizations import visualize_clusters
+import numpy as np
+from utils import pruning_utils, constants, clustering_utils, filtration_utils
+from visualizations import interactive_plot, visualize_clusters
 from validation import check_tree_structure
 
 
@@ -45,11 +45,16 @@ def main():
         constants.NEIGHBORHOOD_CONTRIBUTION_DIFFERENCE,
         constants.SIGMA)
     interactive_plot.InteractivePlot(pruned_neighbors_list)
+
     # Run the tree-based clustering algorithm
     # pylint: disable=W0612
     labels, densities, all_node_maps = clustering_utils.tree_based_clustering(
         pruned_neighbors_list,
         constants.DELTA, constants.BETA)
+
+    # Perform filtration of potential anomalies
+    filtered_labels = filtration_utils.filter_potential_anomalies(np.array(labels),
+                                                                  all_node_maps, densities)
 
     # Test to see if the tree structure is satisfied
     check_tree_structure.check_tree_structure(all_node_maps)
@@ -59,7 +64,7 @@ def main():
         clustering_utils.print_tree_densities(all_node_maps)
 
     # Visualize the clusters
-    visualize_clusters.cluster_visualization(labels, all_node_maps)
+    visualize_clusters.cluster_visualization(filtered_labels, all_node_maps)
 
 
 if __name__ == "__main__":
