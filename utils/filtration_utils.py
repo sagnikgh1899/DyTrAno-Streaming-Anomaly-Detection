@@ -3,6 +3,7 @@ Contains the helper functions for filtration of potential anomalies
 """
 
 import numpy as np
+from tqdm import tqdm
 from utils import data_utils, extract_data, clustering_utils, pruning_utils, constants
 # from visualizations import debug_visualizations
 
@@ -46,7 +47,8 @@ def filter_potential_anomalies(labels, all_node_maps, densities):
     data = data_utils.get_data(extract_data.get_raw_data_path())
     potential_anomalies = np.where(labels == -1)[0]
 
-    for anomaly_index in potential_anomalies:
+    print("\nStarting filtration of potential anomalies...")
+    for anomaly_index in tqdm(potential_anomalies):
         nearest_inlier_index = find_nearest_inlier(anomaly_index, labels, data)
 
         cluster_id = labels[nearest_inlier_index]
@@ -62,9 +64,9 @@ def filter_potential_anomalies(labels, all_node_maps, densities):
         # debug_vizualizations.plot_nearest_inlier_and_potential_anomaly_for_filtration
         # (data, anomaly_index, nearest_inlier_index)
 
-        # print(f"Anomaly Index: {anomaly_index} Inlier Index: {nearest_inlier_index} "
-        #       f"ICD Inlier: {dist1},"
-        #       f"Distance between anomaly and nearest inlier: {dist2}, val: {dist2/dist1}")
+        print(f"Anomaly Index: {anomaly_index}, Inlier Index: {nearest_inlier_index}, "
+              f"ICD Inlier: {dist1}, "
+              f"Distance between anomaly and nearest inlier: {dist2}, val: {dist2/dist1}")
 
         if dist2 < constants.DELTA_FOR_FILTRATION * dist1:
             labels[anomaly_index] = labels[nearest_inlier_index]
@@ -77,13 +79,23 @@ def filter_potential_anomalies(labels, all_node_maps, densities):
             anomaly_converted_to_inlier_density = densities[anomaly_index]
             while anomaly_converted_to_inlier_density > new_root_node.get_density():
                 # pylint: disable=W0511
-                # TODO: What if the child density is higher than the actual root node
+                # If the child density is higher than the actual root node:
+                # note the current root node, set the parent node to None
+                # and break out of the loop
+                if new_root_node.get_parent() is None:
+                    current_root_node = new_root_node
+                    new_root_node = None
+                    break
                 new_root_node = new_root_node.get_parent()
 
             new_node = clustering_utils.TreeNode(anomaly_index, anomaly_converted_to_inlier_density,
                                                  new_root_node, cluster_id)
             new_node.set_parent(new_root_node)
-            new_root_node.add_child(new_node)
+
+            if new_root_node is None:
+                new_node.add_child(current_root_node)
+            else:
+                new_root_node.add_child(new_node)
             node_map[anomaly_index] = new_node
 
         else:

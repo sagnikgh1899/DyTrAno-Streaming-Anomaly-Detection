@@ -3,6 +3,7 @@ Contains the utility functions to return the pruned neighbor list
 """
 
 import numpy as np
+from tqdm import tqdm
 from sklearn.neighbors import NearestNeighbors
 from utils import constants, data_utils, extract_data
 
@@ -64,9 +65,11 @@ def optimal_neighborhood_selection(k, epsilon, sigma):
     data = data_utils.get_data(extract_data.get_raw_data_path())
     num_of_data_points = len(data)
     pruned_neighbors_list = []
+    k_nearest_neighbors_of_all_datapoints = find_k_nearest_neighbors(data, k)
 
-    for num in range(num_of_data_points):
-        neigh = find_k_nearest_neighbors(data, k)[num]
+    print("\nStarting pruned neighborhood calculation...")
+    for num in tqdm(range(num_of_data_points)):
+        neigh = k_nearest_neighbors_of_all_datapoints[num]
         actual_k = len(neigh)
         gamma = np.random.rand(actual_k)
         g_val = sigma * np.identity(k)
