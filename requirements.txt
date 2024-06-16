@@ -1,5 +1,6 @@
 numpy
 scikit-learn
 matplotlib
-pylint
 pytest
+pylint
+tqdm
