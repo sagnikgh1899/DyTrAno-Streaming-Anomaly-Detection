@@ -2,7 +2,9 @@
 Module for hierarchical tree-based clustering using density criteria.
 """
 
+from collections import deque
 import numpy as np
+from tqdm import tqdm
 from utils import data_utils, extract_data, pruning_utils
 
 
@@ -147,42 +149,43 @@ def ewma(current_value, previous_ewma, beta):
 
 
 # pylint: disable=R0913,R0914
-def cluster_tree(root_index, data, pruned_neighbors_list, labels, densities,
+def cluster_tree(root_index, pruned_neighbors_list, labels, densities,
                  delta, cluster_id, beta, parent_node):
     """
-    Recursively build a cluster tree starting from a root node.
+    Build a cluster tree in a breadth-first search manner starting from a root node.
     """
     root_density = densities[root_index]
     ewma_value = root_density
     root_node = TreeNode(root_index, root_density, parent_node, cluster_id)
     node_map = {root_index: root_node}
-    root_neighbors = pruned_neighbors_list[root_index]
+    queue = deque([(root_index, root_node, ewma_value)])
 
-    for child_index in root_neighbors:
-        if child_index == root_index or labels[child_index] != 0:
-            continue
+    while queue:
+        current_index, current_node, current_ewma_value = queue.popleft()
+        root_neighbors = pruned_neighbors_list[current_index]
 
-        child_density = densities[child_index]
-        ewma_value = ewma(child_density, ewma_value, beta)
+        for child_index in root_neighbors:
+            if child_index == current_index or labels[child_index] != 0:
+                continue
 
-        if abs((ewma_value - child_density) / ewma_value) <= delta:
-            labels[child_index] = cluster_id
+            child_density = densities[child_index]
+            ewma_value = ewma(child_density, current_ewma_value, beta)
 
-            new_root_node = root_node
-            while child_density > new_root_node.get_density():
-                # pylint: disable=W0511
-                # TODO: What if the child density is higher than the actual root node
-                new_root_node = new_root_node.get_parent()
+            if abs((ewma_value - child_density) / ewma_value) <= delta:
+                labels[child_index] = cluster_id
 
-            child_node = TreeNode(child_index, child_density, new_root_node, cluster_id)
-            child_node.set_parent(new_root_node)
-            new_root_node.add_child(child_node)
-            node_map[child_index] = child_node
+                new_root_node = current_node
+                while child_density > new_root_node.get_density():
+                    # pylint: disable=W0511
+                    # TODO: What if the child density is higher than the actual root node
+                    new_root_node = new_root_node.get_parent()
 
-            _, child_node_map = cluster_tree(child_index, data, pruned_neighbors_list,
-                                             labels, densities, delta, cluster_id,
-                                             beta, new_root_node)
-            node_map.update(child_node_map)
+                child_node = TreeNode(child_index, child_density, new_root_node, cluster_id)
+                child_node.set_parent(new_root_node)
+                new_root_node.add_child(child_node)
+                node_map[child_index] = child_node
+
+                queue.append((child_index, child_node, ewma_value))
 
     return root_node, node_map
 
@@ -197,24 +200,27 @@ def tree_based_clustering(pruned_neighbors_list, delta, beta):
     cluster_id = 1
     all_node_maps = {}
 
-    while 0 in labels:
-        root_index = np.argmax(densities * (np.array(labels) == 0))
-        if labels[root_index] != 0:
-            break
+    print("\nStarting tree-based clustering...")
+    with tqdm() as pbar:
+        while 0 in labels:
+            root_index = np.argmax(densities * (np.array(labels) == 0))
+            if labels[root_index] != 0:
+                break
 
-        labels[root_index] = cluster_id
-        _, node_map = cluster_tree(root_index, data, pruned_neighbors_list,
-                                   labels, densities, delta, cluster_id,
-                                   beta, None)
-        all_node_maps[cluster_id] = node_map
+            labels[root_index] = cluster_id
+            _, node_map = cluster_tree(root_index, pruned_neighbors_list,
+                                       labels, densities, delta, cluster_id,
+                                       beta, None)
+            all_node_maps[cluster_id] = node_map
+            pbar.update(1)
 
-        # Check if the cluster has only one point
-        # If yes, then its an anomaly
-        if len(node_map) == 1:
-            labels[root_index] = -1
-            del all_node_maps[cluster_id]
-        else:
-            cluster_id += 1
+            # Check if the cluster has only one point
+            # If yes, then its an anomaly
+            if len(node_map) == 1:
+                labels[root_index] = -1
+                del all_node_maps[cluster_id]
+            else:
+                cluster_id += 1
 
     return labels, densities, all_node_maps
 
