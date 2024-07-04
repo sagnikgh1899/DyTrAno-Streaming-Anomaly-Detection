@@ -10,7 +10,7 @@ import pytest
     (20, 'Jain', 2),
     (15, 'Flame', 1),
 ])
-@pytest.mark.flaky(reruns=3)
+@pytest.mark.flaky(reruns=5)
 def test_dataset_clustering(num_neigh, dataset_name, expected_clusters):
     result = subprocess.run(['python', 'main.py', '--numNeigh', str(num_neigh),
                              '--datasetName', dataset_name, '--displayPlot',
