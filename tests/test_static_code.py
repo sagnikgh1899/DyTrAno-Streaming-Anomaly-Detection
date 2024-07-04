@@ -1,10 +1,8 @@
 import pytest
-import sys
 
 from utils import constants, pruning_utils, data_utils, extract_data, clustering_utils
 from validation import check_tree_structure
 
-print(sys.path)
 
 @pytest.fixture
 def pruned_neighbor_list():
