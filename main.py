@@ -23,6 +23,10 @@ def parse_arguments():
                         help='Name of the dataset')
     parser.add_argument('--displayDensity', type=str, default=False,
                         help='Display the densities in tree structure')
+    parser.add_argument('--displayPlot', type=str, default="True",
+                        help='Display the plot after pruning')
+    parser.add_argument('--displayFinalResult', type=str, default="True",
+                        help='Display the final plot with clusters')
     # parser.add_argument('--displayStats', type=str, default=True,
     # help='Display inlier-outlier stats at the end')
 
@@ -31,6 +35,8 @@ def parse_arguments():
     constants.NUMBER_OF_NEIGHBORS = arguments.numNeigh
     constants.DATASET_NAME = arguments.datasetName
     constants.DISPLAY_DENSITY = arguments.displayDensity
+    constants.DISPLAY_PLOT = arguments.displayPlot
+    constants.DISPLAY_FINAL_RESULT = arguments.displayFinalResult
     # constants.DISPLAY_DATA_POINT_STATS = arguments.displayStats
 
 
@@ -44,7 +50,8 @@ def main():
         constants.NUMBER_OF_NEIGHBORS,
         constants.NEIGHBORHOOD_CONTRIBUTION_DIFFERENCE,
         constants.SIGMA)
-    interactive_plot.InteractivePlot(pruned_neighbors_list)
+    if constants.DISPLAY_PLOT == "True":
+        interactive_plot.InteractivePlot(pruned_neighbors_list)
 
     # Run the tree-based clustering algorithm
     # pylint: disable=W0612
@@ -64,7 +71,13 @@ def main():
         clustering_utils.print_tree_densities(all_node_maps)
 
     # Visualize the clusters
-    visualize_clusters.cluster_visualization(filtered_labels, all_node_maps)
+    if constants.DISPLAY_FINAL_RESULT == "True":
+        visualize_clusters.cluster_visualization(filtered_labels, all_node_maps)
+
+    # Save the number of clusters to a file for testing
+    with open('cluster_output.txt', 'w', encoding='utf-8') as file:
+        num_clusters = len(set(filtered_labels))
+        file.write(f'{num_clusters}\n')
 
 
 if __name__ == "__main__":

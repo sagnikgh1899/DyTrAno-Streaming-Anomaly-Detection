@@ -4,3 +4,4 @@ matplotlib
 pytest
 pylint
 tqdm
+pytest-rerunfailures

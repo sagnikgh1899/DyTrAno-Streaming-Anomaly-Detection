@@ -202,11 +202,12 @@ def tree_based_clustering(pruned_neighbors_list, delta, beta):
 
     print("\nStarting tree-based clustering...")
     with tqdm() as pbar:
-        while 0 in labels:
-            root_index = np.argmax(densities * (np.array(labels) == 0))
-            if labels[root_index] != 0:
+        while True:
+            zero_indices = np.where(np.array(labels) == 0)[0]
+            if len(zero_indices) == 0:
                 break
 
+            root_index = zero_indices[np.argmax(densities[zero_indices])]
             labels[root_index] = cluster_id
             _, node_map = cluster_tree(root_index, pruned_neighbors_list,
                                        labels, densities, delta, cluster_id,

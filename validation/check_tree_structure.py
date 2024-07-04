@@ -8,7 +8,6 @@ def check_tree_structure(all_node_maps):
 
     def is_valid_node(node):
         """Check if a node has valid parent-child density relationships."""
-        # pylint: disable:W0631
         if node_map[node.index].parent is not None and node_map[node.index].get_density() > \
                 node_map[node.index].get_parent().get_density():
             print(f"{node.index} has higher density ({node_map[node.index].get_density()}) "
@@ -23,6 +22,7 @@ def check_tree_structure(all_node_maps):
                 return False
         return True
 
+    print("\nStarting tree structure validation...")
     for cluster_id, node_map in all_node_maps.items():
         print(f"Cluster ID: {cluster_id}")
         for index, node in node_map.items():
