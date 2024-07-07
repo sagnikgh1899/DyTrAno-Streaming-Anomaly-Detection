@@ -1,4 +1,4 @@
 [MAIN]
 
 ignore-pattern=test.*
-disable=W0631, E0401
+disable=W0631, E0401, R0914

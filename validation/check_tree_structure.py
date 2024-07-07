@@ -2,6 +2,8 @@
 Validate tree structures by checking parent-child density relationships.
 """
 
+from tqdm import tqdm
+
 
 def check_tree_structure(all_node_maps):
     """Test the validity of tree structures in all_node_maps."""
@@ -23,9 +25,8 @@ def check_tree_structure(all_node_maps):
         return True
 
     print("\nStarting tree structure validation...")
-    for cluster_id, node_map in all_node_maps.items():
-        print(f"Cluster ID: {cluster_id}")
+    for _, node_map in tqdm(all_node_maps.items()):
         for index, node in node_map.items():
             assert is_valid_node(node), f"Node {index} does not " \
                                         f"have a valid parent-child relationship."
-        print("Tree structure validation passed successfully.")
+    print("Tree structure validation passed successfully.")
