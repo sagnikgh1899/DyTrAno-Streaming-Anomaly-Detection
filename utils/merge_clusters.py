@@ -28,16 +28,11 @@ def check_different_cluster_neighbors_helper(filtered_labels, pruned_neighbors_l
     data = data_utils.get_data(extract_data.get_raw_data_path())
     different_cluster_neighbors = []
 
-    cluster_indices_dict = {label: np.where(np.array(filtered_labels) == label)[0]
-                            for label in set(filtered_labels) if label != -1}
-
     print("\nIdentifying neighbors belonging to different clusters...")
     for idx, neighbors in tqdm(enumerate(pruned_neighbors_list)):
         current_label = filtered_labels[idx]
         if current_label == -1:
             continue
-
-        cluster_indices = cluster_indices_dict[current_label]
 
         for neighbor_idx in neighbors:
             neighbor_label = filtered_labels[neighbor_idx]
@@ -46,20 +41,9 @@ def check_different_cluster_neighbors_helper(filtered_labels, pruned_neighbors_l
 
             distance_between_points = pruning_utils.calculate_distance(data[idx],
                                                                        data[neighbor_idx])
-            cluster_indices_neighbor = cluster_indices_dict[neighbor_label]
-
-            _, distance_to_nearest_in_neighbor_cluster = \
-                find_nearest_point_in_cluster(data[neighbor_idx], cluster_indices_neighbor,
-                                              data, neighbor_idx)
-
-            nearest_idx, distance_to_nearest_in_current_cluster = \
-                find_nearest_point_in_cluster(data[idx], cluster_indices, data, idx)
 
             different_cluster_neighbors.append((idx, neighbor_idx, neighbor_label,
-                                                distance_between_points,
-                                                distance_to_nearest_in_current_cluster,
-                                                distance_to_nearest_in_neighbor_cluster,
-                                                nearest_idx))
+                                                distance_between_points))
 
     different_cluster_neighbors.sort(key=lambda x: x[3])
     return different_cluster_neighbors
@@ -82,28 +66,25 @@ def check_different_cluster_neighbors(filtered_labels, pruned_neighbors_list):
     different_cluster_neighbors = get_different_cluster_neighbors(filtered_labels,
                                                                   pruned_neighbors_list)
     print("Points with pruned neighbors belonging to different clusters:")
-    for point, neighbor, neighbor_label, distance_between_points, \
-        distance_to_nearest_in_current_cluster, \
-        distance_to_nearest_in_neighbor_cluster, nearest_in_cluster_index \
-            in different_cluster_neighbors:
+    for point, neighbor, neighbor_label, distance_between_points in different_cluster_neighbors:
         print(
             f"Point {point} (Cluster {filtered_labels[point]}) has neighbor "
-            f"{neighbor} (Cluster {neighbor_label}) with d1 = {distance_between_points:.3f} "
-            f"and d2 = {distance_to_nearest_in_current_cluster:.3f} and d3 = "
-            f"{distance_to_nearest_in_neighbor_cluster:.3} and nearest_in_cluster_index "
-            f"= {nearest_in_cluster_index}")
+            f"{neighbor} (Cluster {neighbor_label}) with d1 = {distance_between_points:.3f}")
 
 
-def update_child_labels(node, new_label, labels):
+def update_child_labels(node, new_label, labels, all_node_maps, old_label):
     """
     Recursively update the labels and cluster IDs of the children of the given node.
     """
     node_index = node.get_index()
     node.cluster_id = new_label
     labels[node_index] = new_label
+    all_node_maps[new_label][node_index] = node
+    if old_label in all_node_maps and node_index in all_node_maps[old_label]:
+        del all_node_maps[old_label][node_index]
 
     for child in node.get_children():
-        update_child_labels(child, new_label, labels)
+        update_child_labels(child, new_label, labels, all_node_maps, old_label)
 
 
 # pylint: disable=R0913
@@ -117,12 +98,13 @@ def cluster_reduction_helper(data_idx, all_node_maps, old_cluster_label,
     if data_idx in all_node_maps[old_cluster_label]:
         node = all_node_maps[old_cluster_label][data_idx]
         previous_parent_node = node.get_parent()
-        update_child_labels(node, new_cluster_label, labels)
+        update_child_labels(node, new_cluster_label, labels, all_node_maps,
+                            old_cluster_label)
         # Delete the datapoint from children list of its previous parent node
         if previous_parent_node is not None:
             previous_parent_node.get_children().remove(node)
-        # Delete the datapoint from all_node_maps of its previous cluster
-        del all_node_maps[old_cluster_label][data_idx]
+        # We already delete the datapoint from all_node_maps of its previous cluster
+        # in the update_child_labels function
         # No datapoint in a cluster - remove the cluster from all_node_maps
         if len(all_node_maps[old_cluster_label]) == 0:
             del all_node_maps[old_cluster_label]
@@ -168,9 +150,8 @@ def process_different_cluster_neighbors(labels, pruned_neighbors_list, all_node_
                                                                   pruned_neighbors_list)
     if debugging:
         check_different_cluster_neighbors(labels, pruned_neighbors_list)
-    for data_idx, neighbor_idx, _, distance_between_points, \
-        distance_to_nearest_in_current_cluster, distance_to_nearest_in_neighbor_cluster, _ \
-            in different_cluster_neighbors:
+    for data_idx, neighbor_idx, _, distance_between_points in \
+            different_cluster_neighbors:
         data_label = labels[data_idx]
         new_neighbor_label = labels[neighbor_idx]
 
@@ -181,20 +162,25 @@ def process_different_cluster_neighbors(labels, pruned_neighbors_list, all_node_
         neighbor_cluster_size = sum(1 for label in labels if label == new_neighbor_label)
 
         if data_point_cluster_size > neighbor_cluster_size:
-            if distance_to_nearest_in_neighbor_cluster / distance_between_points <= \
-                    constants.INTRA_AND_INTER_CLUSTER_DISTANCE_RATIO:
+            if distance_from_current_parent(neighbor_idx, all_node_maps, new_neighbor_label) < \
+                    distance_between_points and \
+                    satisfies_density_criterion(neighbor_idx, data_idx, densities,
+                                                constants.BETA, constants.DELTA):
                 labels, all_node_maps = cluster_reduction_helper(neighbor_idx, all_node_maps,
                                                                  new_neighbor_label, data_label,
                                                                  data_idx, labels, densities)
 
         else:
-            if distance_to_nearest_in_current_cluster / distance_between_points <= \
-                    constants.INTRA_AND_INTER_CLUSTER_DISTANCE_RATIO:
+            if distance_from_current_parent(data_idx, all_node_maps, data_label) < \
+                    distance_between_points and \
+                    satisfies_density_criterion(data_idx, neighbor_idx, densities,
+                                                constants.BETA, constants.DELTA):
                 labels, all_node_maps = cluster_reduction_helper(data_idx, all_node_maps,
                                                                  data_label, new_neighbor_label,
                                                                  neighbor_idx, labels, densities)
 
-    return renumber_labels(labels, all_node_maps)
+    new_filtered_labels, all_node_maps = renumber_labels(labels, all_node_maps)
+    return assign_singular_nodes_as_anomalies(all_node_maps, new_filtered_labels)
 
 
 def renumber_labels(new_filtered_labels, all_node_maps, anomaly_label=-1):
@@ -217,3 +203,38 @@ def renumber_labels(new_filtered_labels, all_node_maps, anomaly_label=-1):
                      in all_node_maps.items() if old_key in label_mapping}
 
     return new_filtered_labels, all_node_maps
+
+
+def satisfies_density_criterion(data_idx, neighbor_idx, densities, beta, delta):
+    """
+    Checks if the density criterion is satisfied or not
+    """
+    current_ewma_value = densities[neighbor_idx]
+    data_point_density = densities[data_idx]
+    ewma_value = clustering_utils.ewma(data_point_density, current_ewma_value, beta)
+    if abs((ewma_value - data_point_density) / ewma_value) <= delta:
+        return True
+    return False
+
+
+def distance_from_current_parent(data_idx, all_node_maps, current_data_label):
+    """
+    Returns the distance between data point and its current parent
+    """
+    current_node = all_node_maps[current_data_label][data_idx]
+    current_parent_node = current_node.get_parent()
+    if current_parent_node is not None:
+        return pruning_utils.calculate_distance(data_idx, current_parent_node.get_index())
+    return 0
+
+
+def assign_singular_nodes_as_anomalies(all_node_maps, labels):
+    """
+    Re-assigns singular nodes points as anomalies
+    """
+    for _, node_map in all_node_maps.items():
+        if len(node_map) == 1:
+            data_idx = next(iter(node_map))
+            labels[data_idx] = -1
+            node_map[data_idx].cluster_id = -1
+    return labels, all_node_maps
