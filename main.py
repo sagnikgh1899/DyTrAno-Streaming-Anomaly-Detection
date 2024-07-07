@@ -5,7 +5,8 @@ This is the main file which runs the DyTrAno program
 import argparse
 import warnings
 import numpy as np
-from utils import pruning_utils, constants, clustering_utils, filtration_utils
+from utils import pruning_utils, constants, clustering_utils, \
+    filtration_utils, merge_clusters
 from visualizations import interactive_plot, visualize_clusters
 from validation import check_tree_structure
 
@@ -70,9 +71,16 @@ def main():
     if constants.DISPLAY_DENSITY:
         clustering_utils.print_tree_densities(all_node_maps)
 
+    # Process different cluster neighbors and merge clusters if feasible
+    merged_labels, all_node_maps = merge_clusters.process_different_cluster_neighbors(
+        filtered_labels, pruned_neighbors_list, all_node_maps, densities)
+
+    # Make sure that the tree structure is satisfied -- Yeah once again!!
+    check_tree_structure.check_tree_structure(all_node_maps)
+
     # Visualize the clusters
-    if constants.DISPLAY_FINAL_RESULT == "True":
-        visualize_clusters.cluster_visualization(filtered_labels, all_node_maps)
+    if constants.DISPLAY_FINAL_RESULT == "True" and len(np.unique(merged_labels)) < 30:
+        visualize_clusters.cluster_visualization(merged_labels, all_node_maps)
 
     # Save the number of clusters to a file for testing
     with open('cluster_output.txt', 'w', encoding='utf-8') as file:

@@ -4,11 +4,14 @@ import pytest
 
 
 @pytest.mark.parametrize("num_neigh, dataset_name, expected_clusters", [
-    (40, 'Corners', 4),
-    (40, 'Moon', 2),
-    (40, 'Half_kernel', 2),
-    (20, 'Jain', 2),
+    (35, 'Corners', 4),
+    (35, 'Moon', 2),
+    (35, 'Half_kernel', 2),
+    (15, 'Jain', 2),
     (15, 'Flame', 1),
+    (25, 'Outlier', 4),
+    (70, 'TwoSpirals', 2),
+    (200, 'Clusterincluster', 2),
 ])
 @pytest.mark.flaky(reruns=5)
 def test_dataset_clustering(num_neigh, dataset_name, expected_clusters):
