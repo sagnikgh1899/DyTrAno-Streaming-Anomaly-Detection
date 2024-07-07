@@ -94,28 +94,6 @@ class TreeNode:
         """
         return self.cluster_id
 
-    def check_and_adjust_hierarchy(self):
-        """
-        Checks and adjusts the tree hierarchy
-        """
-        if self.parent is None:
-            return
-
-        if self.parent.get_density() < self.density:
-            old_parent = self.parent
-            new_parent = self.parent.get_parent()
-            if self in self.parent.children:
-                self.parent.children.remove(self)
-            self.parent = new_parent
-            new_parent.add_child(self)
-            if old_parent in new_parent.children:
-                new_parent.children.remove(old_parent)
-            old_parent.parent = self
-            self.add_child(old_parent)
-
-        for child in self.children:
-            child.check_and_adjust_hierarchy()
-
 
 def calculate_density(data, pruned_neighbors_list):
     """

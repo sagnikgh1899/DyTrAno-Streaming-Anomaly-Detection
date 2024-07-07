@@ -15,10 +15,11 @@ def calculate_distance(data_point1, data_point2):
     return np.sqrt(np.sum((data_point1 - data_point2) ** 2))
 
 
-def find_k_nearest_neighbors(data, k):
+def find_k_nearest_neighbors(data, k, seed=90):
     """
     Returns the k nearest neighbors
     """
+    np.random.seed(seed)
     nbrs = NearestNeighbors(n_neighbors=k, algorithm=constants.CLUSTERING_ALGORITHM).fit(data)
     _, indices = nbrs.kneighbors(data)
     return indices
@@ -37,7 +38,7 @@ def calculate_final_contributions(data, omega, i, neigh):
     """
     Calculates the neighborhood construction weights.
     """
-    distances = np.array([calculate_distance(data[i], data[neighbor]) for neighbor in neigh])
+    distances = np.linalg.norm(data[neigh] - data[i], axis=1)
     w_val = omega / distances
     return w_val
 
